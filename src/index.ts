@@ -190,6 +190,7 @@ export const main = async (): Promise<void> => {
                 throw err;
             }
             
+            console.log(value);
             if (value) {
                 if (CONFIG && firebase.firestore.Timestamp.now().toMillis() - CONFIG.updatedAt < 80000) {
                         rechargeDeviceSnap.ref.set(
