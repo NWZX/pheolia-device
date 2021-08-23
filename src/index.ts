@@ -156,6 +156,14 @@ export const main = async (): Promise<void> => {
                 const gpio = powerPort.get(snapData.currentPower);
                 if (gpio) {
                     gpio.write(0);
+                    snapshot.ref.set(
+                        {
+                            message: 'Charging',
+                            updatedAt: firebase.firestore.Timestamp.now().toMillis(),
+                            currentTimeStart: firebase.firestore.Timestamp.now().toMillis(),
+                        },
+                        { merge: true },
+                    );
                 } else {
                     snapshot.ref.set(
                         {
@@ -183,7 +191,7 @@ export const main = async (): Promise<void> => {
             }
             
             if (value) {
-                if (CONFIG && firebase.firestore.Timestamp.now().toMillis() - CONFIG.updatedAt < 80) {
+                if (CONFIG && firebase.firestore.Timestamp.now().toMillis() - CONFIG.updatedAt < 80000) {
                         rechargeDeviceSnap.ref.set(
                             {
                                 state: State.UNAVAILABLE,
@@ -198,7 +206,7 @@ export const main = async (): Promise<void> => {
                     
                 } else {
                 powerPort.forEach((v) => v.write(1));
-                if (CONFIG && firebase.firestore.Timestamp.now().toMillis() - CONFIG.updatedAt < 80) {
+                if (CONFIG && firebase.firestore.Timestamp.now().toMillis() - CONFIG.updatedAt < 80000) {
                     rechargeDeviceSnap.ref.set(
                         {
                             state: State.AVAILABLE,
