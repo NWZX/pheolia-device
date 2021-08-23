@@ -131,7 +131,8 @@ export const main = async (): Promise<void> => {
 
         const onNext = (snapshot: firebase.firestore.DocumentSnapshot<firebase.firestore.DocumentData>): void => {
             const snapData = { ...snapshot.data() as IConfig, linkedID: rechargeDeviceSnap.id };
-            if (JSON.stringify(snapData) !== JSON.stringify(CONFIG)) {
+            if (JSON.stringify({ ...snapData, updatedAt: 0 }) !== JSON.stringify({...CONFIG, updatedAt: 0})) {
+                console.log(snapData.updatedAt, " ", CONFIG?.updatedAt);
                 //Update offline config
                 CONFIG = snapData;
                 writeFile(CONFIG_FILE, JSON.stringify(CONFIG), (err) => {
@@ -186,7 +187,7 @@ export const main = async (): Promise<void> => {
                 throw err;
             }
             
-            console.log(value);
+            
             if (value) {
                 if (CONFIG && firebase.firestore.Timestamp.now().toMillis() - CONFIG.updatedAt < 80000) {
                         rechargeDeviceSnap.ref.set(
