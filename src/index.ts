@@ -111,7 +111,7 @@ export const main = async (): Promise<void> => {
             throw new Error("Unreadable config file");
         }
 
-        firebase.initializeApp(FIREBASE_CONFIG);
+        firebase.initializeApp(JSON.parse(FIREBASE_CONFIG));
         var db = firebase.firestore();
 
         let rechargeDeviceSnap = await db.collection('rechargeDevices').doc(CONFIG.linkedID).get();
