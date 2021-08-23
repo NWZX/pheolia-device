@@ -82,7 +82,7 @@ export const main = async (): Promise<void> => {
             })
 
             const port = Number.parseInt(DETECTOR_PORT);
-            detectorPort = new Gpio(port, 'in', 'rising', {debounceTimeout: 10})
+            detectorPort = new Gpio(port, 'in', 'both', { debounceTimeout: 10 });
         } catch (error) {
             throw new Error(error)
         }
