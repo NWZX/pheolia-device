@@ -134,48 +134,47 @@ export const main = async (): Promise<void> => {
             if (JSON.stringify(snapData) !== JSON.stringify(CONFIG)) {
                 //Update offline config
                 CONFIG = snapData;
-                writeFile(CONFIG_FILE, JSON.stringify({ ...CONFIG, currentMode: -1, currentTimeStart: 0, state: State.OFFLINE } as IConfig), (err) => {
+                writeFile(CONFIG_FILE, JSON.stringify(CONFIG), (err) => {
                     if (err) {
                         console.error(err);
                     }
                 });
-            }
 
-            if (snapData.state == State.STOP) {
-                exec('shutdown now', function (error, stdout, stderr) {
-                    console.error(stdout);
-                });
-            } else if (
-                snapData.state == State.UNAVAILABLE &&
-                snapData.currentPower > 0 &&
-                snapData.currentTimeStart == 0
-            ) {
-                const gpio = powerPort.get(snapData.currentPower);
-                if (gpio) {
-                    gpio.write(0);
-                    snapshot.ref.set(
-                        {
-                            message: 'Charging',
-                            updatedAt: firebase.firestore.Timestamp.now().toMillis(),
-                            currentTimeStart: firebase.firestore.Timestamp.now().toMillis(),
-                        },
-                        { merge: true },
-                    );
+                if (snapData.state == State.STOP) {
+                    exec('shutdown now', function (error, stdout, stderr) {
+                        console.error(stdout);
+                    });
+                } else if (
+                    snapData.state == State.UNAVAILABLE &&
+                    snapData.currentPower > 0 &&
+                    snapData.currentTimeStart == 0
+                ) {
+                    const gpio = powerPort.get(snapData.currentPower);
+                    if (gpio) {
+                        gpio.write(0);
+                        snapshot.ref.set(
+                            {
+                                message: 'Charging',
+                                updatedAt: firebase.firestore.Timestamp.now().toMillis(),
+                                currentTimeStart: firebase.firestore.Timestamp.now().toMillis(),
+                            },
+                            { merge: true },
+                        );
+                    } else {
+                        snapshot.ref.set(
+                            {
+                                state: State.ERROR,
+                                message: 'Power unavalable',
+                                updatedAt: firebase.firestore.Timestamp.now().toMillis(),
+                                currentPower: 0,
+                                currentTimeStart: 0,
+                            },
+                            { merge: true },
+                        );
+                    }
                 } else {
-                    snapshot.ref.set(
-                        {
-                            state: State.ERROR,
-                            message: 'Power unavalable',
-                            updatedAt: firebase.firestore.Timestamp.now().toMillis(),
-                            currentPower: 0,
-                            currentTimeStart: 0,
-                        },
-                        { merge: true },
-                    );
+                    console.log('Action unrequired');
                 }
-            }
-            else {
-                console.log('Action unrequired');
             }
         }
         //Doccument update loop
