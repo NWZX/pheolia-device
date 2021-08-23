@@ -231,4 +231,5 @@ process.on('SIGINT', (_) => {
         v.unexport();
     });
     detectorPort?.unexport();
+    process.exit(0);
 });
