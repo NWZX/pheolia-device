@@ -42,9 +42,6 @@ export interface IConfig {
 
 const powerPort = new Map<number, Gpio>();
 let detectorPort: Gpio | undefined;
-process.on('SIGINT', (_) => {
-    powerPort.forEach((v) => { v.unexport() });
-});
 
 const timerStep = (ref: firebase.firestore.DocumentReference, config: IConfig) => {
     setTimeout(() => {
@@ -76,7 +73,7 @@ export const main = async (): Promise<void> => {
                 if (!check.includes(v.port)) {
                     const tgpio = new Gpio(v.port, 'out');
                     powerPort.set(v.power, tgpio);
-                    tgpio.writeSync(0);
+                    tgpio.writeSync(1);
                     check.push(v.port);
                 }
             })
@@ -151,7 +148,7 @@ export const main = async (): Promise<void> => {
             } else if (
                 snapData.state == State.UNAVAILABLE &&
                 snapData.currentPower > 0 &&
-                snapData.currentTimeStart != 0
+                snapData.currentTimeStart == 0
             ) {
                 const gpio = powerPort.get(snapData.currentPower);
                 if (gpio) {
@@ -229,3 +226,9 @@ export const main = async (): Promise<void> => {
 
 }
 main();
+process.on('SIGINT', (_) => {
+    powerPort.forEach((v) => {
+        v.unexport();
+    });
+    detectorPort?.unexport();
+});
