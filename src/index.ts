@@ -5,6 +5,7 @@ import {exec} from 'child_process';
 import { readFileSync, writeFile, existsSync } from 'fs';
 import { machineIdSync } from 'node-machine-id';
 import firebase from 'firebase'
+import _ from 'underscore';
 
 
 export enum State {
@@ -130,8 +131,8 @@ export const main = async (): Promise<void> => {
         const onNext = (snapshot: firebase.firestore.DocumentSnapshot<firebase.firestore.DocumentData>): void => {
             const snapData = { ...snapshot.data() as IConfig, linkedID: rechargeDeviceSnap.id };
             CONFIG ? CONFIG.updatedAt = snapData.updatedAt : null;
-            
-            if (JSON.stringify(snapData) !== JSON.stringify(CONFIG)) {
+
+            if (!_.isEqual(snapData, CONFIG)) {
                 console.log(snapData.updatedAt, " ", CONFIG?.updatedAt);
                 //Update offline config
                 CONFIG = snapData;
