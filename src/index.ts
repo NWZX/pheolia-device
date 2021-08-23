@@ -199,7 +199,7 @@ export const main = async (): Promise<void> => {
                                 message: 'Connected',
                                 updatedAt: firebase.firestore.Timestamp.now().toMillis(),
                                 currentPower: 0,
-                                currentTimeStart: firebase.firestore.Timestamp.now().toMillis(),
+                                currentTimeStart: 0,
                             },
                             { merge: true },
                         );
