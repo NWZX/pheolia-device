@@ -138,7 +138,7 @@ export const main = async (): Promise<void> => {
                 //Update offline config
                 CONFIG = snapData;
                 writeFile(CONFIG_FILE, JSON.stringify({...CONFIG, currentMode: -1, currentTimeStart: 0, state: State.OFFLINE} as IConfig), (err) => {
-                    throw err;
+                    throw new Error(err?.message);
                 });
             }
 
