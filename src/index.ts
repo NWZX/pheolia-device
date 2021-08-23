@@ -18,7 +18,7 @@ export enum State {
 
 export interface IConfig {
     linkedID: string;
-    uid: string;
+    uid?: string;
     name: string;
     message: string;
     state: State;
@@ -46,15 +46,17 @@ process.on('SIGINT', (_) => {
     powerPort.forEach((v) => { v.unexport() });
 });
 
-const timerStep = (ref: firebase.firestore.DocumentReference) => {
+const timerStep = (ref: firebase.firestore.DocumentReference, config: IConfig) => {
     setTimeout(() => {
+        const time = firebase.firestore.Timestamp.now().toMillis();
+        config.updatedAt = time;
         ref.set(
             {
-                updatedAt: firebase.firestore.Timestamp.now().toMillis(),
+                updatedAt: time,
             },
             { merge: true },
         );
-        timerStep(ref);
+        timerStep(ref, config);
     }, 60000);
 };
 
@@ -125,6 +127,11 @@ export const main = async (): Promise<void> => {
 
         CONFIG = { ...rechargeDeviceSnap.data() as IConfig, linkedID: rechargeDeviceSnap.id };
 
+        if (!CONFIG.uid) {
+            rechargeDeviceSnap.ref.set({ uid: UID } as Partial<IConfig>, { merge: true });
+            CONFIG.uid = UID;
+        }
+
         const onNext = (snapshot: firebase.firestore.DocumentSnapshot<firebase.firestore.DocumentData>): void => {
             const snapData = { ...snapshot.data() as IConfig, linkedID: rechargeDeviceSnap.id };
             if (JSON.stringify(snapData) !== JSON.stringify(CONFIG)) {
@@ -166,7 +173,7 @@ export const main = async (): Promise<void> => {
         }
         //Doccument update loop
         db.collection('rechargeDevices').doc(CONFIG.linkedID).onSnapshot({ next: onNext });
-        timerStep(rechargeDeviceSnap.ref); //Update status loop (To check if device is online)
+        timerStep(rechargeDeviceSnap.ref, CONFIG); //Update status loop (To check if device is online)
         //Vehicule connection loop
         detectorPort.watch((err, value) => {
             if (err) {
