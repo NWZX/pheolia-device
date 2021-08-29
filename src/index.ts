@@ -151,8 +151,10 @@ export const main = async (): Promise<void> => {
                     snapData.currentPower > 0 &&
                     snapData.currentTimeStart == 0
                 ) {
+                    let modeExist = false;
+                    snapData.powerMode.forEach((v) => modeExist = !modeExist ? v.power == snapData.currentPower : true);
                     const gpio = powerPort.get(snapData.currentPower);
-                    if (gpio) {
+                    if (gpio && modeExist) {
                         gpio.write(0);
                         snapshot.ref.set(
                             {
