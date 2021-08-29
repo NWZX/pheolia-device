@@ -9,12 +9,13 @@ import _ from 'underscore';
 
 
 export enum State {
-    OFFLINE, // Disconnected to online service
-    ONLINE, // Connected to online service
-    AVAILABLE, // There is no car charging
-    UNAVAILABLE, // There is a car charging
-    STOP, // Emergency stopping unit
-    ERROR, // Something went wrong
+    OFFLINE, // Disconnected to online service (HS)
+    ONLINE, // Connected to online service (HS)
+    AVAILABLE, // There is no car charging (Empty)
+    PEDDING, // A car  is currently connected and waiting for session start (Can be disconnected by anyone)
+    UNAVAILABLE, // There is a car charging (Is locked, can't be disconnected only when session is stop)
+    STOP, // Emergency stopping unit (HS)
+    ERROR, // Something went wrong (HS)
 }
 
 export interface IConfig {
@@ -147,7 +148,7 @@ export const main = async (): Promise<void> => {
                         console.error(stdout);
                     });
                 } else if (
-                    snapData.state == State.UNAVAILABLE &&
+                    snapData.state == State.PEDDING &&
                     snapData.currentPower > 0 &&
                     snapData.currentTimeStart == 0
                 ) {
@@ -158,6 +159,7 @@ export const main = async (): Promise<void> => {
                         gpio.write(0);
                         snapshot.ref.set(
                             {
+                                state: State.UNAVAILABLE,
                                 message: 'Charging',
                                 updatedAt: firebase.firestore.Timestamp.now().toMillis(),
                                 currentTimeStart: firebase.firestore.Timestamp.now().toMillis(),
@@ -195,7 +197,7 @@ export const main = async (): Promise<void> => {
                 if (CONFIG && firebase.firestore.Timestamp.now().toMillis() - CONFIG.updatedAt < 80000) {
                         rechargeDeviceSnap.ref.set(
                             {
-                                state: State.UNAVAILABLE,
+                                state: State.PEDDING,
                                 message: 'Connected',
                                 updatedAt: firebase.firestore.Timestamp.now().toMillis(),
                                 currentPower: 0,
