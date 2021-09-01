@@ -30,6 +30,7 @@
     "firebase": "^8.10.0",
     "node-machine-id": "^1.1.12",
     "onoff": "^6.0.3",
+    "pheolia-common": "github:NWZX/pheolia-common",
     "underscore": "^1.13.1"
   }
 }

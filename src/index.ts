@@ -6,24 +6,14 @@ import { readFileSync, writeFile, existsSync } from 'fs';
 import { machineIdSync } from 'node-machine-id';
 import firebase from 'firebase'
 import _ from 'underscore';
-
-
-export enum State {
-    OFFLINE, // Disconnected to online service (HS)
-    ONLINE, // Connected to online service (HS)
-    AVAILABLE, // There is no car charging (Empty)
-    PEDDING, // A car  is currently connected and waiting for session start (Can be disconnected by anyone)
-    UNAVAILABLE, // There is a car charging (Is locked, can't be disconnected only when session is stop)
-    STOP, // Emergency stopping unit (HS)
-    ERROR, // Something went wrong (HS)
-}
+import {ERechargeDevicesState} from 'pheolia-common'
 
 export interface IConfig {
     linkedID: string;
     uid?: string;
     name: string;
     message: string;
-    state: State;
+    state: ERechargeDevicesState;
     currentPower: number;
     currentTimeStart: number;
     powerMode: {
@@ -144,23 +134,25 @@ export const main = async (): Promise<void> => {
                     }
                 });
 
-                if (snapData.state == State.STOP) {
+                if (snapData.state == ERechargeDevicesState.STOP) {
                     exec('shutdown now', function (error, stdout, stderr) {
                         console.error(stdout);
                     });
                 } else if (
-                    snapData.state == State.PEDDING &&
+                    snapData.state == ERechargeDevicesState.PEDDING &&
                     snapData.currentPower > 0 &&
                     snapData.currentTimeStart == 0
                 ) {
                     let modeExist = false;
-                    snapData.powerMode.forEach((v) => modeExist = !modeExist ? v.power == snapData.currentPower : true);
+                    snapData.powerMode.forEach(
+                        (v) => (modeExist = !modeExist ? v.power == snapData.currentPower : true),
+                    );
                     const gpio = powerPort.get(snapData.currentPower);
                     if (gpio && modeExist) {
                         gpio.write(0);
                         snapshot.ref.set(
                             {
-                                state: State.UNAVAILABLE,
+                                state: ERechargeDevicesState.UNAVAILABLE,
                                 message: 'Power cable locked (charging)',
                                 updatedAt: firebase.firestore.Timestamp.now().toMillis(),
                                 currentTimeStart: firebase.firestore.Timestamp.now().toMillis(),
@@ -170,7 +162,7 @@ export const main = async (): Promise<void> => {
                     } else {
                         snapshot.ref.set(
                             {
-                                state: State.ERROR,
+                                state: ERechargeDevicesState.ERROR,
                                 message: 'Power selected unavalable',
                                 updatedAt: firebase.firestore.Timestamp.now().toMillis(),
                                 currentPower: 0,
@@ -198,7 +190,7 @@ export const main = async (): Promise<void> => {
                 if (CONFIG && firebase.firestore.Timestamp.now().toMillis() - CONFIG.updatedAt < 80000) {
                         rechargeDeviceSnap?.ref.set(
                             {
-                                state: State.PEDDING,
+                                state: ERechargeDevicesState.PEDDING,
                                 message: 'Power cable connected',
                                 updatedAt: firebase.firestore.Timestamp.now().toMillis(),
                                 currentPower: 0,
@@ -213,7 +205,7 @@ export const main = async (): Promise<void> => {
                 if (CONFIG && firebase.firestore.Timestamp.now().toMillis() - CONFIG.updatedAt < 80000) {
                     rechargeDeviceSnap?.ref.set(
                         {
-                            state: State.AVAILABLE,
+                            state: ERechargeDevicesState.AVAILABLE,
                             message: 'Power cable disconnected',
                             updatedAt: firebase.firestore.Timestamp.now().toMillis(),
                             currentPower: 0,
@@ -235,7 +227,7 @@ main();
 process.on('SIGINT', (_) => {
     rechargeDeviceSnap?.ref.set(
         {
-            state: State.OFFLINE,
+            state: ERechargeDevicesState.OFFLINE,
             message: 'Charger offline',
             updatedAt: firebase.firestore.Timestamp.now().toMillis(),
             currentPower: 0,
