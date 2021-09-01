@@ -224,8 +224,8 @@ export const main = async (): Promise<void> => {
 
 }
 main();
-process.on('SIGINT', (_) => {
-    rechargeDeviceSnap?.ref.set(
+process.on('SIGINT', async (_) => {
+    await rechargeDeviceSnap?.ref.set(
         {
             state: ERechargeDevicesState.OFFLINE,
             message: 'Charger offline',
@@ -235,9 +235,12 @@ process.on('SIGINT', (_) => {
         },
         { merge: true },
     );
+    console.log('Set Offline');
     powerPort.forEach((v) => {
         v.unexport();
     });
     detectorPort?.unexport();
+    console.log('Port disconnected');
+    console.log('Closing...');
     process.exit(0);
 });
