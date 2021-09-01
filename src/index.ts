@@ -44,6 +44,7 @@ export interface IConfig {
 
 const powerPort = new Map<number, Gpio>();
 let detectorPort: Gpio | undefined;
+let rechargeDeviceSnap: firebase.firestore.DocumentSnapshot<firebase.firestore.DocumentData> | null = null;
 
 const timerStep = (ref: firebase.firestore.DocumentReference) => {
     setTimeout(() => {
@@ -111,7 +112,7 @@ export const main = async (): Promise<void> => {
         firebase.initializeApp(JSON.parse(FIREBASE_CONFIG));
         var db = firebase.firestore();
 
-        let rechargeDeviceSnap = await db.collection('rechargeDevices').doc(CONFIG.linkedID).get();
+        rechargeDeviceSnap = await db.collection('rechargeDevices').doc(CONFIG.linkedID).get();
         if (!rechargeDeviceSnap.exists) {
             const rechargeDevicesSnap = await db.collection('rechargeDevices').where('uid', '==', UID).get();
             if (!rechargeDevicesSnap.empty) {
@@ -130,7 +131,7 @@ export const main = async (): Promise<void> => {
         }
 
         const onNext = (snapshot: firebase.firestore.DocumentSnapshot<firebase.firestore.DocumentData>): void => {
-            const snapData = { ...snapshot.data() as IConfig, linkedID: rechargeDeviceSnap.id };
+            const snapData = { ...snapshot.data() as IConfig, linkedID: snapshot.id };
             CONFIG ? CONFIG.updatedAt = snapData.updatedAt : null;
 
             if (!_.isEqual(snapData, CONFIG)) {
@@ -160,7 +161,7 @@ export const main = async (): Promise<void> => {
                         snapshot.ref.set(
                             {
                                 state: State.UNAVAILABLE,
-                                message: 'Charging',
+                                message: 'Power cable locked (charging)',
                                 updatedAt: firebase.firestore.Timestamp.now().toMillis(),
                                 currentTimeStart: firebase.firestore.Timestamp.now().toMillis(),
                             },
@@ -170,7 +171,7 @@ export const main = async (): Promise<void> => {
                         snapshot.ref.set(
                             {
                                 state: State.ERROR,
-                                message: 'Power unavalable',
+                                message: 'Power selected unavalable',
                                 updatedAt: firebase.firestore.Timestamp.now().toMillis(),
                                 currentPower: 0,
                                 currentTimeStart: 0,
@@ -195,10 +196,10 @@ export const main = async (): Promise<void> => {
             
             if (value) {
                 if (CONFIG && firebase.firestore.Timestamp.now().toMillis() - CONFIG.updatedAt < 80000) {
-                        rechargeDeviceSnap.ref.set(
+                        rechargeDeviceSnap?.ref.set(
                             {
                                 state: State.PEDDING,
-                                message: 'Connected',
+                                message: 'Power cable connected',
                                 updatedAt: firebase.firestore.Timestamp.now().toMillis(),
                                 currentPower: 0,
                                 currentTimeStart: 0,
@@ -210,10 +211,10 @@ export const main = async (): Promise<void> => {
                 } else {
                 powerPort.forEach((v) => v.write(1));
                 if (CONFIG && firebase.firestore.Timestamp.now().toMillis() - CONFIG.updatedAt < 80000) {
-                    rechargeDeviceSnap.ref.set(
+                    rechargeDeviceSnap?.ref.set(
                         {
                             state: State.AVAILABLE,
-                            message: 'Disconnected',
+                            message: 'Power cable disconnected',
                             updatedAt: firebase.firestore.Timestamp.now().toMillis(),
                             currentPower: 0,
                             currentTimeStart: 0,
@@ -232,6 +233,16 @@ export const main = async (): Promise<void> => {
 }
 main();
 process.on('SIGINT', (_) => {
+    rechargeDeviceSnap?.ref.set(
+        {
+            state: State.OFFLINE,
+            message: 'Charger offline',
+            updatedAt: firebase.firestore.Timestamp.now().toMillis(),
+            currentPower: 0,
+            currentTimeStart: 0,
+        },
+        { merge: true },
+    );
     powerPort.forEach((v) => {
         v.unexport();
     });
