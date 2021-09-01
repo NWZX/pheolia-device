@@ -36,10 +36,14 @@ const powerPort = new Map<number, Gpio>();
 let detectorPort: Gpio | undefined;
 let rechargeDeviceSnap: firebase.firestore.DocumentSnapshot<firebase.firestore.DocumentData> | null = null;
 
-const timerStep = (ref: firebase.firestore.DocumentReference) => {
+const FIREBASE_CONFIG = process.env.FIREBASE_CONFIG;
+const CONFIG_FILE = process.env.CONFIG_FILE;
+
+const timerStep = async (ref: firebase.firestore.DocumentReference, needBackOnline = false) => {
     setTimeout(() => {
         ref.set(
             {
+                state: needBackOnline ? ERechargeDevicesState.AVAILABLE : undefined,
                 updatedAt: firebase.firestore.Timestamp.now().toMillis(),
             },
             { merge: true },
@@ -78,9 +82,6 @@ export const main = async (): Promise<void> => {
 
         console.log('Initialization Software');
         const UID = machineIdSync();
-        
-        const FIREBASE_CONFIG = process.env.FIREBASE_CONFIG;
-        const CONFIG_FILE = process.env.CONFIG_FILE;
 
         if (!FIREBASE_CONFIG || !CONFIG_FILE) {
             throw new Error('Missing environment variable');
@@ -100,6 +101,7 @@ export const main = async (): Promise<void> => {
         }
 
         firebase.initializeApp(JSON.parse(FIREBASE_CONFIG));
+        firebase.firestore().settings({ ignoreUndefinedProperties: true });
         var db = firebase.firestore();
 
         rechargeDeviceSnap = await db.collection('rechargeDevices').doc(CONFIG.linkedID).get();
@@ -178,8 +180,9 @@ export const main = async (): Promise<void> => {
         }
         //Doccument update loop
         db.collection('rechargeDevices').doc(CONFIG.linkedID).onSnapshot({ next: onNext });
-        timerStep(rechargeDeviceSnap.ref); //Update status loop (To check if device is online)
+        timerStep(rechargeDeviceSnap.ref, CONFIG.state == ERechargeDevicesState.OFFLINE); //Update status loop (To check if device is online)
         //Vehicule connection loop
+        console.log('Ready');
         detectorPort.watch((err, value) => {
             if (err) {
                 throw err;
@@ -235,6 +238,14 @@ process.on('SIGINT', async (_) => {
         },
         { merge: true },
     );
+    if (CONFIG_FILE) {
+        const CONFIG = { ...(rechargeDeviceSnap?.data() as IConfig), linkedID: rechargeDeviceSnap?.id };
+        writeFile(CONFIG_FILE, JSON.stringify(CONFIG), (err) => {
+            if (err) {
+                console.error(err);
+            }
+        });
+    }
     console.log('Set Offline');
     powerPort.forEach((v) => {
         v.unexport();
