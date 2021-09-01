@@ -2,7 +2,7 @@ import * as env from 'dotenv';
 env.config();
 import { Gpio } from 'onoff';
 import {exec} from 'child_process';
-import { readFileSync, writeFile, existsSync } from 'fs';
+import { readFileSync, writeFile, writeFileSync, existsSync } from 'fs';
 import { machineIdSync } from 'node-machine-id';
 import firebase from 'firebase'
 import _ from 'underscore';
@@ -239,12 +239,8 @@ process.on('SIGINT', async (_) => {
         { merge: true },
     );
     if (CONFIG_FILE) {
-        const CONFIG = { ...(rechargeDeviceSnap?.data() as IConfig), linkedID: rechargeDeviceSnap?.id };
-        writeFile(CONFIG_FILE, JSON.stringify(CONFIG), (err) => {
-            if (err) {
-                console.error(err);
-            }
-        });
+        const CONFIG = { ...rechargeDeviceSnap?.data(), linkedID: rechargeDeviceSnap?.id };
+        writeFileSync(CONFIG_FILE, JSON.stringify(CONFIG));
     }
     console.log('Set Offline');
     powerPort.forEach((v) => {
